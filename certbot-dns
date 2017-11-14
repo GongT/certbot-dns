@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+
+set -e
+
+CWD="$(pwd)"
+
+cd $(dirname "${BASH_SOURCE[0]}")
+
+source ./get-cert/base.sh
+
+if [ -z "$1" ]; then
+	usage
+fi
+
+while getopts ":df:" o; do
+    case "${o}" in
+        d)
+			export DRY_RUN='--staging'
+            ;;
+        f)
+        	CFG="$OPTARG"
+            ;;
+		\?)
+			usage "Invalid option: -$OPTARG"
+			exit 1
+			;;
+		:)
+			usage "Option -$OPTARG requires an argument."
+			;;
+        *)
+            usage
+            ;;
+    esac
+done
+
+if [ -n "${CFG}" ]; then
+	set -a
+	if [ -e "$CFG" ] ; then
+		source "$CFG" || die "config file wrong: $CFG"
+	elif [ -e "$CWD/$CFG" ] ; then
+		source "$CWD/$CFG" || die "config file wrong: $CWD/$CFG"
+	else
+		die "config file '$CFG' not exists"
+	fi
+	set +a
+fi
+
+for SUB_DOMAIN; do true ; done
+
+if [ -z "${SUB_DOMAIN}" ] || [ "${SUB_DOMAIN}" = "${CFG}" ]; then
+	usage "you must provide a sub domain name"
+fi
+
+check_variables BASE_DOMAIN EMAIL DNSMASQ_CONFIG_DIR DNSMASQ_SERVICE_CONTROL
+
+export DOMAIN="${SUB_DOMAIN}.${BASE_DOMAIN}"
+
+cd get-cert
+expect action.expect "${DOMAIN}"

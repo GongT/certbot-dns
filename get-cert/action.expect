@@ -1,0 +1,90 @@
+#!/usr/bin/expect --
+
+set timeout 9999
+set DOMAIN [ lindex $argv 0 ]
+set CERTBOT_CMD "certbot certonly $::env(DRY_RUN) --manual --preferred-challenges dns -d $DOMAIN"
+
+proc spawn_child {CMD} {
+	# global name
+	# global slave
+	
+	global cols
+	global rows
+	global spawn_out
+
+	# set CMD [ lindex $argv 0 ]
+	send_user " ---> spawning process $CMD\n"
+	if [catch "spawn $CMD" reason] {
+		send_user " ---> ERROR: spawn: $reason\n"
+		exit 1
+	}
+	
+	return $spawn_id
+}
+
+proc run_put_dns {DATA} {
+	set spawn_id [ spawn_child "bash put_dns.sh $DATA" ]
+	expect eof
+	
+	lassign [wait] pid spawnid os_error_flag value
+	if {$os_error_flag == 0} {
+		send_user " ---> dns set complete.\n"
+	} else {
+		send_user "errno: $value"
+		send_user " ---> Failed !\n"
+		exit 1
+	}
+}
+
+proc main {} {
+	global CERTBOT_CMD
+	set spawn_id [ spawn_child $CERTBOT_CMD ]
+	
+	set DATA ""
+	
+	expect {
+		"Keep the existing certificate for now" {
+			send \x03
+			close
+			send_user "\nError: cert exists.\n"
+			exit 1
+		}
+		"Enter email address" {
+			send "$::env(EMAIL)\n"
+			exp_continue
+		}
+		"(A)gree" {
+			send "A\n"
+			exp_continue
+		}
+		"(Y)es" {
+			send "Y\n"
+			exp_continue
+		}
+		"Please deploy a DNS TXT record under the name" {
+			set CONTENT ""
+			expect {
+				"following value:" {
+					exp_continue
+				}
+				"Before continuing," {
+					set CONTENT "[ string map {"Before continuing," ""} $expect_out(buffer) ]"
+					exp_continue
+				}
+				"Press Enter to Continue" {
+					run_put_dns [ string trim $CONTENT ]
+					send "\n"
+					expect eof
+				}
+			}
+		}
+		timeout {
+			exp_continue
+		}
+	}
+}
+
+if { [catch { main } err] } {
+        send_user "Error: $err ：\n"
+        exit 1
+}
