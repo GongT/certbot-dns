@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-source /etc/profile
-
 set -e
 
 CWD="$(pwd)"
@@ -12,12 +10,10 @@ if [ -z "$1" ]; then
 	usage
 fi
 
+
 while getopts ":df:" o; do
 	case "${o}" in
-        d)
-		export DRY_RUN='--staging'
-		;;
-        f)
+	f)
 		CFG="$OPTARG"
 		;;
 	\?)
@@ -30,19 +26,17 @@ while getopts ":df:" o; do
 	*)
 		usage
 		;;
-    esac
+	esac
 done
 
 if [ -n "${CFG}" ]; then
-	set -a
 	if [ -e "$CFG" ] ; then
-		source "$CFG" || die "config file wrong: $CFG"
+		load-config "$CFG"
 	elif [ -e "$CWD/$CFG" ] ; then
-		source "$CWD/$CFG" || die "config file wrong: $CWD/$CFG"
+		load-config "$CWD/$CFG"
 	else
 		die "config file '$CFG' not exists"
 	fi
-	set +a
 fi
 
 for SUB_DOMAIN; do true ; done
@@ -56,5 +50,5 @@ check_variables BASE_DOMAIN EMAIL DNSMASQ_CONFIG_DIR DNSMASQ_SERVICE_CONTROL
 export DOMAIN="${SUB_DOMAIN}.${BASE_DOMAIN}"
 
 cd get-cert
-expect action.expect "${DOMAIN}"
+echo "aaaa" | bash put_dns_config.sh "${SUB_DOMAIN}"
 

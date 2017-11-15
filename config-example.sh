@@ -7,9 +7,12 @@ BASE_DOMAIN="service.gongt.me"
 EMAIL="admin@gongt.me"
 
 # config options
-DNSMASQ_CONFIG_DIR="/var/lib/machines/homedns/etc/dnsmasq.d/"
-DNSMASQ_SERVICE_CONTROL="systemctl -M homedns restart dnsmasq"
+DNSMASQ_CONFIG_DIR="/etc/dnsmasq.d/auto/"
+DNSMASQ_SERVICE_CONTROL="systemctl restart dnsmasq"
 # eg: docker exec dnsmasq kill -SIGUSR2 1
+
+# cname command options
+CNAME_TARGET="home.gongt.me"
 
 # remote config
 # use this if your dnsmasq is running on another machine
@@ -25,3 +28,4 @@ DNSMASQ_SERVICE_CONTROL="systemctl -M homedns restart dnsmasq"
 
 # DNS_REMOTE="root:password@remote-server:22"
 # DNS_REMOTE_KEYFILE=""
+

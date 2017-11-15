@@ -74,3 +74,12 @@ function check_variables() {
 		shift
 	done
 }
+function load-config() {
+	local CFG="$1"
+	set -a
+	echo "load config file: $CFG"
+	source "$CFG" || die "config file wrong: $CFG"
+	set +a
+}
+
+
