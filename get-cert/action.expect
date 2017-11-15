@@ -23,8 +23,12 @@ proc spawn_child {CMD} {
 }
 
 proc run_put_dns {DATA} {
-	set spawn_id [ spawn_child "bash put_dns.sh $DATA" ]
-	expect eof
+	global DOMAIN
+	set fileId [ open /tmp/put-dns.txt w ]
+	puts $fileId "txt-record=_acme-challenge.$DOMAIN,\"$DATA\""
+	close $fileId
+	set spawn_id [ spawn_child "bash put_dns_config.sh $DOMAIN /tmp/put-dns.txt" ]
+#	expect eof
 	
 	lassign [wait] pid spawnid os_error_flag value
 	if {$os_error_flag == 0} {
@@ -85,6 +89,7 @@ proc main {} {
 }
 
 if { [catch { main } err] } {
-        send_user "Error: $err ：\n"
+        send_user "Error: $err.\n"
         exit 1
 }
+

@@ -45,10 +45,13 @@ if [ -z "${SUB_DOMAIN}" ] || [ "${SUB_DOMAIN}" = "${CFG}" ]; then
 	usage "you must provide a sub domain name"
 fi
 
-check_variables BASE_DOMAIN EMAIL DNSMASQ_CONFIG_DIR DNSMASQ_SERVICE_CONTROL
+check_variables BASE_DOMAIN CNAME_TARGET DNSMASQ_CONFIG_DIR DNSMASQ_SERVICE_CONTROL
 
 export DOMAIN="${SUB_DOMAIN}.${BASE_DOMAIN}"
 
 cd get-cert
-echo "aaaa" | bash put_dns_config.sh "${SUB_DOMAIN}"
+echoo "
+cname=${DOMAIN},${CNAME_TARGET}
+" | \
+bash put_dns_config.sh "cname-${SUB_DOMAIN}"
 

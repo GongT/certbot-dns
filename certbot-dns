@@ -12,6 +12,7 @@ if [ -z "$1" ]; then
 	usage
 fi
 
+export DRY_RUN=''
 while getopts ":df:" o; do
 	case "${o}" in
         d)
@@ -34,15 +35,13 @@ while getopts ":df:" o; do
 done
 
 if [ -n "${CFG}" ]; then
-	set -a
 	if [ -e "$CFG" ] ; then
-		source "$CFG" || die "config file wrong: $CFG"
+		load-config "$CFG"
 	elif [ -e "$CWD/$CFG" ] ; then
-		source "$CWD/$CFG" || die "config file wrong: $CWD/$CFG"
+		load-config "$CWD/$CFG"
 	else
 		die "config file '$CFG' not exists"
 	fi
-	set +a
 fi
 
 for SUB_DOMAIN; do true ; done
