@@ -4,6 +4,7 @@ source /etc/profile
 
 set -e
 
+CFG="config.sh"
 CWD="$(pwd)"
 cd $(dirname "$(realpath "${BASH_SOURCE[0]}")")
 source ./get-cert/base.sh
@@ -50,10 +51,10 @@ if [ -z "${SUB_DOMAIN}" ] || [ "${SUB_DOMAIN}" = "${CFG}" ]; then
 	usage "you must provide a sub domain name"
 fi
 
-check_variables BASE_DOMAIN EMAIL DNSMASQ_CONFIG_DIR DNSMASQ_SERVICE_CONTROL
+check_variables BASE_DOMAIN EMAIL NAMED_DB_FILE NAMED_SERVICE_CONTROL
 
 export DOMAIN="${SUB_DOMAIN}.${BASE_DOMAIN}"
 
 cd get-cert
-expect action.expect "${DOMAIN}"
+expect action.expect "${SUB_DOMAIN}" "${BASE_DOMAIN}"
 

@@ -1,8 +1,10 @@
 #!/usr/bin/expect --
 
 set timeout 9999
-set DOMAIN [ lindex $argv 0 ]
-set CERTBOT_CMD "certbot certonly $::env(DRY_RUN) --manual --preferred-challenges dns -d $DOMAIN"
+set SUB_DOMAIN [ lindex $argv 0 ]
+set BASE_DOMAIN [ lindex $argv 1 ]
+set BASE_DOMAIN [ lindex $argv 1 ]
+set CERTBOT_CMD "certbot certonly $::env(DRY_RUN) --manual --preferred-challenges dns -d $SUB_DOMAIN.$BASE_DOMAIN"
 
 proc spawn_child {CMD} {
 	# global name
@@ -23,13 +25,15 @@ proc spawn_child {CMD} {
 }
 
 proc run_put_dns {DATA} {
-	global DOMAIN
+	global SUB_DOMAIN
+	global BASE_DOMAIN
 	set fileId [ open /tmp/put-dns.txt w ]
-	puts $fileId "txt-record=_acme-challenge.$DOMAIN,\"$DATA\""
+	puts $fileId "\"$DATA\""
 	close $fileId
-	set spawn_id [ spawn_child "bash put_dns_config.sh $DOMAIN /tmp/put-dns.txt" ]
+	set spawn_id [ spawn_child "bash put_dns_config.sh $SUB_DOMAIN TXT /tmp/put-dns.txt" ]
 #	expect eof
-	
+	interact
+	set spawn_id [ spawn_child "bash -c 'sleep 1; test -e /tmp/put-dns-status-error'" ]
 	lassign [wait] pid spawnid os_error_flag value
 	if {$os_error_flag == 0} {
 		send_user " ---> dns set complete.\n"
@@ -76,6 +80,7 @@ proc main {} {
 					exp_continue
 				}
 				"Press Enter to Continue" {
+					send_user "\n"
 					run_put_dns [ string trim $CONTENT ]
 					send "\n"
 					expect eof

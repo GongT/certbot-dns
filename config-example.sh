@@ -7,19 +7,19 @@ BASE_DOMAIN="service.gongt.me"
 EMAIL="admin@gongt.me"
 
 # config options
-DNSMASQ_CONFIG_DIR="/etc/dnsmasq.d/auto/"
-DNSMASQ_SERVICE_CONTROL="systemctl restart dnsmasq"
-# eg: docker exec dnsmasq kill -SIGUSR2 1
+NAMED_DB_FILE="/etc/named/zones/db.service.gongt.me"
+NAMED_SERVICE_CONTROL="systemctl restart named"
+# eg: docker restart named
 
 # cname command options
 CNAME_TARGET="home.gongt.me"
 
 # remote config
-# use this if your dnsmasq is running on another machine
+# use this if your named is running on another machine
 # this user must able to:
 #   A. login with ssh
-# 	B. run `sudo DNSMASQ_SERVICE_CONTROL` without password
-#   C. able to write file to DNSMASQ_CONFIG_DIR
+# 	B. run `sudo NAMED_SERVICE_CONTROL` without password
+#   C. able to write to NAMED_DB_FILE
 # or you can simply use root
 #
 # if you use a private key, then no "password" is required in DNS_REMOTE

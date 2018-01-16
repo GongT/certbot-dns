@@ -2,6 +2,7 @@
 
 set -e
 
+CFG="config.sh"
 CWD="$(pwd)"
 cd $(dirname "$(realpath "${BASH_SOURCE[0]}")")
 source ./get-cert/base.sh
@@ -45,13 +46,8 @@ if [ -z "${SUB_DOMAIN}" ] || [ "${SUB_DOMAIN}" = "${CFG}" ]; then
 	usage "you must provide a sub domain name"
 fi
 
-check_variables BASE_DOMAIN CNAME_TARGET DNSMASQ_CONFIG_DIR DNSMASQ_SERVICE_CONTROL
-
-export DOMAIN="${SUB_DOMAIN}.${BASE_DOMAIN}"
+check_variables CNAME_TARGET BASE_DOMAIN CNAME_TARGET NAMED_DB_FILE NAMED_SERVICE_CONTROL
 
 cd get-cert
-echoo "
-cname=${DOMAIN},${CNAME_TARGET}
-" | \
-bash put_dns_config.sh "cname-${SUB_DOMAIN}"
+echoo "${CNAME_TARGET}" | bash put_dns_config.sh "${SUB_DOMAIN}" "CNAME"
 
