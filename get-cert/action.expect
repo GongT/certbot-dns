@@ -33,7 +33,7 @@ proc run_put_dns {DATA} {
 	set spawn_id [ spawn_child "bash put_dns_config.sh $SUB_DOMAIN TXT /tmp/put-dns.txt" ]
 #	expect eof
 	interact
-	set spawn_id [ spawn_child "bash -c 'sleep 1; test -e /tmp/put-dns-status-error'" ]
+	set spawn_id [ spawn_child "bash wait.sh" ]
 	lassign [wait] pid spawnid os_error_flag value
 	if {$os_error_flag == 0} {
 		send_user " ---> dns set complete.\n"
