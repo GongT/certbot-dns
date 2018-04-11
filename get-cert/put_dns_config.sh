@@ -13,8 +13,8 @@ fi
 
 source "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/base.sh"
 
-export SUB_DOMAIN="$1"
-if [ -z "${SUB_DOMAIN}" ] ; then
+export RECORD_NAME="$1"
+if [ -z "${RECORD_NAME}" ] ; then
 	die "Error: no sub domain name"
 fi
 export RECORD_TYPE="$2"
@@ -29,6 +29,8 @@ fi
 if false ; then
 	NAMED_DB_FILE=
 	NAMED_SERVICE_CONTROL=
+	DNSMASQ_DIR=
+	DNSMASQ_SERVICE_CONTROL=
 	DNS_REMOTE=
 	DNS_REMOTE_KEYFILE=
 fi
@@ -42,9 +44,7 @@ function export_var() {
 	done
 }
 
-export FULL_CHALLENGE="_acme-challenge.${SUB_DOMAIN}"
-
-export_var NAMED_DB_FILE SUB_DOMAIN FULL_CHALLENGE RECORD_TYPE > "${TMP}"
+export_var NAMED_DB_FILE RECORD_NAME RECORD_TYPE > "${TMP}"
 cat >> "${TMP}" << 'InputComesFromHERE'
 set -e
 
@@ -58,8 +58,8 @@ function die() {
 if [ ! -e "${F}" ]; then
 	die "Error: no database file: ${F}"
 fi
-sed -i "/^${FULL_CHALLENGE//./\\.}/d" "${F}"
-echo -n "${FULL_CHALLENGE} IN ${RECORD_TYPE} " > /tmp/get-cert-challenge.txt
+sed -i "/^${RECORD_NAME//./\\.}/d" "${F}"
+echo -n "${RECORD_NAME} IN ${RECORD_TYPE} " > /tmp/get-cert-challenge.txt
 cat >> "/tmp/get-cert-challenge.txt"
 
 cat /tmp/get-cert-challenge.txt | tee -a ${F}
@@ -68,8 +68,7 @@ if [ "$(id -u)" -ne 0 ]; then
 	export sudo="sudo"
 fi
 $sudo ${NAMED_SERVICE_CONTROL} || {
-	// cat "${F}"
-	sed -i "/^${FULL_CHALLENGE//./\\.}/d" "${F}"
+	sed -i "/^${RECORD_NAME//./\\.}/d" "${F}"
 	$sudo ${NAMED_SERVICE_CONTROL}
 	exit 1
 }

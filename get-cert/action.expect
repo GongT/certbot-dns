@@ -30,7 +30,7 @@ proc run_put_dns {DATA} {
 	set fileId [ open /tmp/put-dns.txt w ]
 	puts $fileId "\"$DATA\""
 	close $fileId
-	set spawn_id [ spawn_child "bash put_dns_config.sh $SUB_DOMAIN TXT /tmp/put-dns.txt" ]
+	set spawn_id [ spawn_child "bash put_dns_config.sh _acme-challenge.$SUB_DOMAIN TXT /tmp/put-dns.txt" ]
 #	expect eof
 	interact
 	set spawn_id [ spawn_child "bash wait.sh" ]
