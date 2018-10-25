@@ -1,18 +1,21 @@
+#!/usr/bin/env bash
 # you can create a file contains these config
 # and save to /etc/profile.d
 # or use certbot-dns -f "the file"
 
 # certbot options
-BASE_DOMAIN="service.gongt.me"
-EMAIL="admin@gongt.me"
+BASE_DOMAIN="dynamic.example.com"
+EMAIL="admin@example.com"
 
+BIND_CONFIG_ROOT="/data/AppData/config/homedns"
 # config options
-NAMED_DB_FILE="/etc/named/zones/db.service.gongt.me"
-NAMED_SERVICE_CONTROL="systemctl restart named"
-# eg: docker restart named
+NAMED_DB_FILE="${BIND_CONFIG_ROOT}/named/zones/db.dynamic.example.com"
+NAMED_SERVICE_CONTROL="systemctl reload named -M homedns"
+# DNSMASQ_DIR="/var/lib/machines/homedns/etc/dnsmasq.d"
+# DNSMASQ_SERVICE_CONTROL="systemctl restart dnsmasq -M homedns"
 
 # cname command options
-CNAME_TARGET="home.gongt.me"
+CNAME_TARGET="dispatcher.example.com."
 
 # remote config
 # use this if your named is running on another machine
