@@ -14,12 +14,13 @@ fi
 
 function execute() {
 	local P="$PDNS_UTIL"
+	local RECORD_CONTENT="${RECORD_NAME}.${BASE_DOMAIN} ${RECORD_TTL} IN ${RECORD_TYPE} ${RECORD_VALUE}"
 	cat << REMOTE_SCRIPT
 	function P() {
 		$P "\$@" 2>/dev/null
 	}
 	function PR() {
-		$P "\$@" 2>/dev/null || $P "\$@" || die "Failed to \$1"
+		(set -x ; $P "\$@" 2>/dev/null) || (set -x ; $P "\$@") || die "Failed to \$1"
 	}
 	$(declare -f -p die)
 	if ! P list-zone '${BASE_DOMAIN}' >/dev/null ; then
@@ -28,14 +29,22 @@ function execute() {
 		echo "creating zone: Ok"
 	fi
 	
-	if P list-zone service.gongt.me | grep -qE '^${RECORD_NAME}\\.${BASE_DOMAIN}' ; then
+	if P list-zone '${BASE_DOMAIN}' | grep -qE '^${RECORD_NAME}\\.${BASE_DOMAIN}' ; then
 		echo "deleting record: "
 		export EDITOR="sed -i -e '/^${RECORD_NAME}\\.${BASE_DOMAIN}/d'"
 		yes a | PR edit-zone '${BASE_DOMAIN}' || die "Failed to delete original record."
 		echo "deleting record: Ok"
 	fi
-	echo "creating record: "
-	PR add-record '${BASE_DOMAIN}' '${RECORD_NAME}' '${RECORD_TYPE}' '${RECORD_TTL}' '${RECORD_VALUE}' || die "Failed to create ${RECORD_TYPE} Record."
+	echo "creating record: ${RECORD_CONTENT}"
+	echo '#!/bin/bash
+set -x
+DATA=\$(cat "\$1")
+echo "\$DATA" > "\$1"
+echo '${RECORD_CONTENT}' >> "\$1"
+' > /tmp/editor
+	chmod a+x /tmp/editor
+	export EDITOR="/tmp/editor"
+	yes a | PR edit-zone '${BASE_DOMAIN}' || die "Failed to create ${RECORD_TYPE}<${RECORD_NAME}> record."
 	echo "creating record: Ok"
 	
 	echo "reloading service: "
