@@ -2,52 +2,12 @@
 
 set -e
 
-CFG="config.sh"
-CWD="$(pwd)"
-cd $(dirname "$(realpath "${BASH_SOURCE[0]}")")
-source ./get-cert/base.sh
+source $(dirname "$(realpath "${BASH_SOURCE[0]}")")/get-cert/base.sh
 
-if [ -z "$1" ]; then
-	usage
-fi
+load-arguments "$@"
 
+check_variables CNAME_TARGET BASE_DOMAIN
 
-while getopts ":df:" o; do
-	case "${o}" in
-	f)
-		CFG="$OPTARG"
-		;;
-	\?)
-		usage "Invalid option: -$OPTARG"
-		exit 1
-		;;
-	:)
-		usage "Option -$OPTARG requires an argument."
-		;;
-	*)
-		usage
-		;;
-	esac
-done
-
-if [ -n "${CFG}" ]; then
-	if [ -e "$CFG" ] ; then
-		load-config "$CFG"
-	elif [ -e "$CWD/$CFG" ] ; then
-		load-config "$CWD/$CFG"
-	else
-		die "config file '$CFG' not exists"
-	fi
-fi
-
-for SUB_DOMAIN; do true ; done
-
-if [ -z "${SUB_DOMAIN}" ] || [ "${SUB_DOMAIN}" = "${CFG}" ]; then
-	usage "you must provide a sub domain name"
-fi
-
-check_variables CNAME_TARGET BASE_DOMAIN CNAME_TARGET NAMED_DB_FILE NAMED_SERVICE_CONTROL
-
-cd get-cert
-echoo "${CNAME_TARGET}" | bash put_dns_config.sh "${SUB_DOMAIN}" "CNAME"
+cd "$ROOT"
+. get-cert/put_dns_config.sh "${ARG_HOST}" "CNAME" "${CNAME_TARGET}"
 

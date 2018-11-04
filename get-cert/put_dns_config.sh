@@ -1,17 +1,34 @@
 #!/usr/bin/env bash
 
+cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+source base.sh
+
+if false ; then # fix some highlight
+	NAMED_DB_FILE=
+	NAMED_SERVICE_CONTROL=
+	DNSMASQ_DIR=
+	DNSMASQ_SERVICE_CONTROL=
+	PDNS_SERVICE_CONTROL=
+	DNS_REMOTE_TYPE=
+	DNS_REMOTE=
+	DNS_REMOTE_KEYFILE=
+fi
+
 set -e
 
-trap "echo GOT HUP" SIGHUP
+TMP_SCRIPT_FILE="/tmp/dns-remote-run.${RANDOM}.sh"
 trap "
+set +e
+trap - EXIT
+unlink '$TMP_SCRIPT_FILE'
 if [ \$? -eq 0 ]; then
 	rm -f /tmp/put-dns-status-error
+	exit 0
 else
 	touch /tmp/put-dns-status-error
+	exit 1
 fi
 " EXIT
-
-source "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/base.sh"
 
 export RECORD_NAME="$1"
 if [ -z "${RECORD_NAME}" ] ; then
@@ -21,75 +38,47 @@ export RECORD_TYPE="$2"
 if [ -z "${RECORD_TYPE}" ] ; then
 	die "Error: no record type"
 fi
-export CONTENT_FROM="$3"
-if [ -n "${CONTENT_FROM}" ] && ! [ -e "${CONTENT_FROM}" ]; then
-	die "Error: no source file: ${CONTENT_FROM}"
+export RECORD_VALUE="$3"
+export RECORD_TTL="${4-86400}"
+
+TYPE=
+if [ -n "$NAMED_SERVICE_CONTROL" ]; then
+	TYPE="named"
+elif [ -n "$DNSMASQ_SERVICE_CONTROL" ]; then
+	TYPE="dnsmasq"
+elif [ -n "$PDNS_SERVICE_CONTROL" ]; then
+	TYPE="pdns"
+else
+	die "Config fail, no service type detected. you must use named or pdns or dnsmasq."
 fi
 
-if false ; then
-	NAMED_DB_FILE=
-	NAMED_SERVICE_CONTROL=
-	DNSMASQ_DIR=
-	DNSMASQ_SERVICE_CONTROL=
-	DNS_REMOTE=
-	DNS_REMOTE_KEYFILE=
-fi
+echo "Put DNS record:
+	Service: ${TYPE}
+	Type: $RECORD_TYPE
+	Record: $RECORD_NAME
+	Value: $RECORD_VALUE
+	TTL: $RECORD_TTL
+"
 
-# .${RANDOM}
-TMP=/tmp/certbot-dns-remote-run.sh
-
-function export_var() {
-	for i ; do
-		echo "$i=${!i}" 
-	done
-}
-
-export_var NAMED_DB_FILE RECORD_NAME RECORD_TYPE > "${TMP}"
-cat >> "${TMP}" << 'InputComesFromHERE'
-set -e
-
-F="${NAMED_DB_FILE}"
-function die() {
-	if [ -n "$*" ]; then
-		echo "\e[38;5;9m""$@""\e[0m" >&2
-	fi
-	exit 1
-}
-if [ ! -e "${F}" ]; then
-	die "Error: no database file: ${F}"
-fi
-sed -i "/^${RECORD_NAME//./\\.}/d" "${F}"
-echo -n "${RECORD_NAME} IN ${RECORD_TYPE} " > /tmp/get-cert-challenge.txt
-cat >> "/tmp/get-cert-challenge.txt"
-
-cat /tmp/get-cert-challenge.txt | tee -a ${F}
-
-if [ "$(id -u)" -ne 0 ]; then
-	export sudo="sudo"
-fi
-$sudo ${NAMED_SERVICE_CONTROL} || {
-	sed -i "/^${RECORD_NAME//./\\.}/d" "${F}"
-	$sudo ${NAMED_SERVICE_CONTROL}
-	exit 1
-}
-sleep 5
-exit 0
-InputComesFromHERE
-
-function stdin() {
-	if [ -z "${CONTENT_FROM}" ]; then
-		cat
-	else
-		cat "${CONTENT_FROM}"
-	fi
-}
+(
+	echoo 'set -e'
+	declare -p RECORD_NAME RECORD_TYPE RECORD_VALUE
+	source "$ROOT/get-cert/providers/${TYPE}.sh"
+	execute
+) > "${TMP_SCRIPT_FILE}"
 
 if [ -z "$DNS_REMOTE" ]; then
-	stdin | bash ${TMP} || die "not able to apply dns config"
+	sudo bash "${TMP_SCRIPT_FILE}" || die "not able to apply dns config"
 else
-	ARGS=("${DNS_REMOTE}")
-	if [ -n "${DNS_REMOTE_KEYFILE}" ]; then
-		ARGS+=(-i "${DNS_REMOTE_KEYFILE}")
+	if [ "$DNS_REMOTE_TYPE" = "ssh" ] || [ -z "$DNS_REMOTE_TYPE" ]; then
+		ARGS=("${DNS_REMOTE}")
+		if [ -n "${DNS_REMOTE_KEYFILE}" ]; then
+			ARGS+=(-i "${DNS_REMOTE_KEYFILE}")
+		fi
+		expect auto_ssh.expect "${ARGS[@]}" sudo bash -c "$(<"${TMP_SCRIPT_FILE}")" || die "not able to apply dns config"
+	elif [ "$DNS_REMOTE_TYPE" = "ns" ]; then
+		machinectl shell "$DNS_REMOTE" /bin/bash -c "$(<"${TMP_SCRIPT_FILE}")" || die "not able to apply dns config"
+	else
+		die "Unknown remote type: $DNS_REMOTE_TYPE"
 	fi
-	stdin | expect auto_ssh.expect "${ARGS[@]}" bash -c "$(<"${TMP}")" || die "not able to apply dns config"
 fi

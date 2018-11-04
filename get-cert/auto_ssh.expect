@@ -92,7 +92,7 @@ proc real_spawn_ssh {} {
 	}
 	
 	send_user " ---> spawning process $RUN $RUNUSER$HOST $ARGS\n"
-	if [catch "spawn $RUN $RUNUSER$HOST $ARGS" reason] {
+	if [catch "spawn $RUN -tt $RUNUSER$HOST $ARGS" reason] {
 		send_user " ---> ERROR: spawn: $reason\n"
 		exit 255
 	}

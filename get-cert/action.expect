@@ -3,10 +3,8 @@
 set timeout 9999
 set SUB_DOMAIN [ lindex $argv 0 ]
 set BASE_DOMAIN [ lindex $argv 1 ]
-set BASE_DOMAIN [ lindex $argv 1 ]
-set CERTBOT_CMD "certbot certonly $::env(DRY_RUN) --manual --preferred-challenges dns -d $SUB_DOMAIN.$BASE_DOMAIN"
 
-proc spawn_child {CMD} {
+proc spawn_child {CMD args} {
 	# global name
 	# global slave
 	
@@ -14,9 +12,8 @@ proc spawn_child {CMD} {
 	global rows
 	global spawn_out
 
-	# set CMD [ lindex $argv 0 ]
 	send_user " ---> spawning process $CMD\n"
-	if [catch "spawn $CMD" reason] {
+	if [catch { spawn "$CMD" {*}$args } reason] {
 		send_user " ---> ERROR: spawn: $reason\n"
 		exit 1
 	}
@@ -24,36 +21,35 @@ proc spawn_child {CMD} {
 	return $spawn_id
 }
 
-proc run_put_dns {DATA} {
+proc run_set_dns_value {DATA} {
 	global SUB_DOMAIN
 	global BASE_DOMAIN
-	set fileId [ open /tmp/put-dns.txt w ]
-	puts $fileId "\"$DATA\""
-	close $fileId
-	set spawn_id [ spawn_child "bash put_dns_config.sh _acme-challenge.$SUB_DOMAIN TXT /tmp/put-dns.txt" ]
-#	expect eof
-	interact
+	set spawn_id [ spawn_child bash set-dns-value "_acme-challenge.$SUB_DOMAIN" TXT "\"$DATA\"" ]
+	expect eof
 	lassign [wait] pid spawnid os_error_flag value
+	
+	send_user " ------> return value: $os_error_flag $value\n"
+	
 	if {$os_error_flag != 0} {
-        send_user " ---> dns server update failed.\n"
+		send_user " ---> Failed to execute set-dns-value: $os_error_flag\n"
 		exit 1
-    }
-	
-	
-	set spawn_id [ spawn_child "bash wait.sh" ]
-	lassign [wait] pid spawnid os_error_flag value
-	if {$os_error_flag == 0} {
-		send_user " ---> dns set complete.\n"
+	} elseif {$value != 0} {
+		send_user " ---> Failed set-dns-value: exit with $value\n"
+		exit 1
 	} else {
-		send_user "errno: $value"
-		send_user " ---> Failed !\n"
-		exit 1
+		send_user " ---> dns set complete.\n"
 	}
 }
 
 proc main {} {
-	global CERTBOT_CMD
-	set spawn_id [ spawn_child $CERTBOT_CMD ]
+	global SUB_DOMAIN
+	global BASE_DOMAIN
+
+	if { "$::env(DRY_RUN)" == "" } {
+		set spawn_id [ spawn_child certbot certonly --manual --preferred-challenges dns -d $SUB_DOMAIN.$BASE_DOMAIN ]
+	} else {
+		set spawn_id [ spawn_child certbot certonly $::env(DRY_RUN) --manual --preferred-challenges dns -d $SUB_DOMAIN.$BASE_DOMAIN ]
+	}
 	
 	set DATA ""
 	
@@ -88,7 +84,7 @@ proc main {} {
 				}
 				"Press Enter to Continue" {
 					send_user "\n"
-					run_put_dns [ string trim $CONTENT ]
+					run_set_dns_value [ string trim $CONTENT ]
 					send "\n"
 					expect eof
 				}

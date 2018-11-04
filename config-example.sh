@@ -1,34 +1,44 @@
 #!/usr/bin/env bash
-# you can create a file contains these config
-# and save to /etc/profile.d
-# or use certbot-dns -f "the file"
+# you can create a file contains these config name as "config.sh"
+# or use certbot-dns -f "the file" or cname -f "this file"
 
-# certbot options
+# === Certbot's options
 BASE_DOMAIN="dynamic.example.com"
 EMAIL="admin@example.com"
 
-BIND_CONFIG_ROOT="/data/AppData/config/homedns"
-# config options
-NAMED_DB_FILE="${BIND_CONFIG_ROOT}/named/zones/db.dynamic.example.com"
-NAMED_SERVICE_CONTROL="systemctl reload named -M homedns"
+# === Config options
+## use bind(9)
+# NAMED_DB_FILE="${BIND_CONFIG_ROOT}/named/zones/db.dynamic.example.com"
+# NAMED_SERVICE_CONTROL="systemctl reload named"
+
+## use dnsmasq
 # DNSMASQ_DIR="/var/lib/machines/homedns/etc/dnsmasq.d"
-# DNSMASQ_SERVICE_CONTROL="systemctl restart dnsmasq -M homedns"
+# DNSMASQ_SERVICE_CONTROL="systemctl restart dnsmasq"
+
+## use PowerDNS
+# PDNS_UTIL="/usr/bin/pdnsutil"
+# PDNS_SERVICE_CONTROL="/usr/bin/pdns_control"
 
 # cname command options
 CNAME_TARGET="dispatcher.example.com."
 
-# remote config
-# use this if your named is running on another machine
-# this user must able to:
-#   A. login with ssh
-# 	B. run `sudo NAMED_SERVICE_CONTROL` without password
-#   C. able to write to NAMED_DB_FILE
-# or you can simply use root
-#
-# if you use a private key, then no "password" is required in DNS_REMOTE
-# if you have configured ssh private key (eg: ~/.ssh/config), nothing is required.
+## remote config
+# use this if your name-server is running on another machine
 
+##    NAMESPACE
+# DNS_REMOTE_TYPE="ns"
+# DNS_REMOTE="machine-name"
 
+##    SSH
+# DNS_REMOTE_TYPE="ssh"
+
+#### remote user must able to:
+# ** A. login with ssh
+# ** B. run `sudo XXX_SERVICE_CONTROL` without password
+# ** C. write to NAMED_DB_FILE or DNSMASQ_DIR or something
+
+#### if you use a private key, then no "password"
 # DNS_REMOTE="root:password@remote-server:22"
-# DNS_REMOTE_KEYFILE=""
 
+# the key to use (-i), if you not config it in .ssh/config
+# DNS_REMOTE_KEYFILE=""

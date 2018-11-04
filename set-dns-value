@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+set -e
+source $(dirname "$(realpath "${BASH_SOURCE[0]}")")/get-cert/base.sh
+
+load-arguments "$@"
+
+ARG_TYPE="${EXTRA_ARGS[0]}"
+ARG_VALUE="${EXTRA_ARGS[1]}"
+
+check_variables CNAME_TARGET BASE_DOMAIN ARG_TYPE ARG_VALUE
+
+cd "$ROOT"
+. get-cert/put_dns_config.sh "${ARG_HOST}" "${ARG_TYPE}" "${ARG_VALUE}"
+

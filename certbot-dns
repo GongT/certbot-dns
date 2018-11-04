@@ -1,60 +1,14 @@
 #!/usr/bin/env bash
 
 source /etc/profile
-
 set -e
 
-CFG="config.sh"
-CWD="$(pwd)"
-cd $(dirname "$(realpath "${BASH_SOURCE[0]}")")
-source ./get-cert/base.sh
+source $(dirname "$(realpath "${BASH_SOURCE[0]}")")/get-cert/base.sh
 
-if [ -z "$1" ]; then
-	usage
-fi
+load-arguments "$@"
 
-export DRY_RUN=''
-while getopts ":df:" o; do
-	case "${o}" in
-        d)
-		export DRY_RUN='--staging'
-		;;
-        f)
-		CFG="$OPTARG"
-		;;
-	\?)
-		usage "Invalid option: -$OPTARG"
-		exit 1
-		;;
-	:)
-		usage "Option -$OPTARG requires an argument."
-		;;
-	*)
-		usage
-		;;
-    esac
-done
+check_variables BASE_DOMAIN EMAIL
 
-if [ -n "${CFG}" ]; then
-	if [ -e "$CFG" ] ; then
-		load-config "$CFG"
-	elif [ -e "$CWD/$CFG" ] ; then
-		load-config "$CWD/$CFG"
-	else
-		die "config file '$CFG' not exists"
-	fi
-fi
-
-for SUB_DOMAIN; do true ; done
-
-if [ -z "${SUB_DOMAIN}" ] || [ "${SUB_DOMAIN}" = "${CFG}" ]; then
-	usage "you must provide a sub domain name"
-fi
-
-check_variables BASE_DOMAIN EMAIL NAMED_DB_FILE NAMED_SERVICE_CONTROL
-
-export DOMAIN="${SUB_DOMAIN}.${BASE_DOMAIN}"
-
-cd get-cert
-expect action.expect "${SUB_DOMAIN}" "${BASE_DOMAIN}"
+cd "$ROOT"
+expect get-cert/action.expect "${ARG_HOST}" "${BASE_DOMAIN}"
 
