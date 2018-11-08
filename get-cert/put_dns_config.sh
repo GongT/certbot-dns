@@ -18,13 +18,15 @@ set -e
 
 TMP_SCRIPT_FILE="/tmp/dns-remote-run.${RANDOM}.sh"
 trap "
+RET=\$?
 set +e
 trap - EXIT
-unlink '$TMP_SCRIPT_FILE'
-if [ \$? -eq 0 ]; then
+if [ \$RET -eq 0 ]; then
+	unlink '$TMP_SCRIPT_FILE'
 	rm -f /tmp/put-dns-status-error
 	exit 0
 else
+	echo 'Failed script: $TMP_SCRIPT_FILE'
 	touch /tmp/put-dns-status-error
 	exit 1
 fi
@@ -61,6 +63,7 @@ echo "Put DNS record:
 "
 
 (
+	echoo '#!/bin/bash'
 	echoo 'set -e'
 	declare -p RECORD_NAME RECORD_TYPE RECORD_VALUE
 	source "$ROOT/get-cert/providers/${TYPE}.sh"
@@ -77,7 +80,8 @@ else
 		fi
 		expect auto_ssh.expect "${ARGS[@]}" sudo bash -c "$(<"${TMP_SCRIPT_FILE}")" || die "not able to apply dns config"
 	elif [ "$DNS_REMOTE_TYPE" = "ns" ]; then
-		machinectl shell "$DNS_REMOTE" /bin/bash -c "$(<"${TMP_SCRIPT_FILE}")" || die "not able to apply dns config"
+		systemd-run -q -M "$DNS_REMOTE" --wait -P -G /bin/bash -c "cat > '${TMP_SCRIPT_FILE}' " <"${TMP_SCRIPT_FILE}" || die "not able to apply dns config"
+		systemd-run -q -M "$DNS_REMOTE" --wait -P -G /bin/bash "${TMP_SCRIPT_FILE}" || die "not able to apply dns config"
 	else
 		die "Unknown remote type: $DNS_REMOTE_TYPE"
 	fi
