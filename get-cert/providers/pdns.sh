@@ -13,7 +13,7 @@ if false ; then
 fi
 
 function execute() {
-	local RECORD_CONTENT="${RECORD_NAME}.${BASE_DOMAIN} ${RECORD_TTL} IN ${RECORD_TYPE} \"${RECORD_VALUE}\""
+	local RECORD_CONTENT="${RECORD_NAME}.${BASE_DOMAIN} ${RECORD_TTL} IN ${RECORD_TYPE} ${RECORD_VALUE}"
 	declare -p PDNS_UTIL
 	declare -p RECORD_CONTENT
 	declare -p RECORD_NAME
@@ -28,6 +28,9 @@ function execute() {
 }
 
 function program_content() {
+	local T="/tmp/output-${RANDOM}"
+	mkdir -p "$T"
+	trap "rm -rf '$T'" EXIT
 	function P() {
 		"$PDNS_UTIL" "$@" 2>/dev/null
 	}
@@ -47,13 +50,28 @@ function program_content() {
 		echo "deleting record: Ok"
 	fi
 	echo "creating record: ${RECORD_CONTENT}"
-	echo '#!/bin/bash
-echo "" >> "$1"
-echo "${RECORD_CONTENT}" >> "$1"
-' > /tmp/editor
-	chmod a+x /tmp/editor
-	export EDITOR="/tmp/editor"
-	yes a | PR edit-zone "${BASE_DOMAIN}" || die "Failed to create ${RECORD_TYPE}<${RECORD_NAME}> record."
+	local TMP_DATA="$T/data"
+	
+	echo '#!/bin/bash' > "$T/editor"
+	chmod a+x "$T/editor"
+	function editor() {
+		echo "" >> "$1"
+		echo "$RECORD_CONTENT" >> "$1"
+		echo "----------$1----------" > "$T/db"
+		cat "$1" >> "$T/db"
+		echo "----------$1----------" >> "$T/db"
+	}
+	declare -p RECORD_CONTENT >> "$T/editor"
+	declare -pf editor >> "$T/editor"
+	echo 'editor "$@"' >> "$T/editor"
+	
+	export EDITOR="$T/editor"
+	yes a | PR edit-zone "${BASE_DOMAIN}" | tee "$T/add-output" || die "Failed to create ${RECORD_TYPE}<${RECORD_NAME}> record."
+	grep -q "No changes to apply" "$T/add-output" && {
+		cat "$T/db" >&2 || true
+		die "Seems no change"
+	} || true
+	
 	echo "creating record: Ok"
 	
 	echo "reloading service: "
